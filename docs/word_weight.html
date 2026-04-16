@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Weight - 単語の重み測定 v0.1</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Work+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:0.4}50%{opacity:1}}
+@keyframes barGrow{from{width:0}to{width:var(--w)}}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Work Sans',sans-serif;background:#0D1117;color:#C8CDD4;min-height:100vh;line-height:1.8}
+::selection{background:rgba(138,158,123,0.3)}
+.container{max-width:640px;margin:0 auto;padding:32px 24px 80px}
+.header{text-align:center;margin-bottom:48px;animation:fadeUp 0.8s ease}
+.header-label{font-size:10px;letter-spacing:4px;color:#8A9E7B;margin-bottom:12px;text-transform:uppercase}
+.header-title{font-family:'Cormorant Garamond',serif;font-size:clamp(24px,5vw,36px);font-weight:300;color:#E0E4EA;letter-spacing:1px;margin-bottom:8px}
+.header-sub{font-size:12px;color:#6B7580;line-height:1.8}
+.header-ver{font-size:10px;color:#3A4250;margin-top:8px;letter-spacing:2px}
+.input-section{margin-bottom:32px;animation:fadeUp 0.8s ease 0.2s both}
+.input-label{font-size:11px;color:#8A9E7B;letter-spacing:2px;margin-bottom:10px;text-transform:uppercase}
+.input-desc{font-size:12px;color:#6B7580;margin-bottom:16px;line-height:1.8}
+.word-input{width:100%;padding:16px;background:#141920;border:1px solid #1E2836;border-radius:8px;color:#E0E4EA;font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:400;text-align:center;outline:none;transition:border-color 0.3s;letter-spacing:4px}
+.word-input:focus{border-color:#8A9E7B40}
+.word-input::placeholder{color:#2A3040;font-size:20px;letter-spacing:2px}
+.examples{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;justify-content:center}
+.ex-btn{padding:6px 14px;background:transparent;border:1px solid #1E2836;border-radius:20px;color:#4A5260;font-family:'Work Sans',sans-serif;font-size:11px;cursor:pointer;transition:all 0.2s}
+.ex-btn:hover{border-color:#8A9E7B40;color:#8A9E7B}
+.run-btn{display:block;width:100%;padding:14px;background:transparent;border:1px solid #8A9E7B40;border-radius:8px;color:#8A9E7B;font-family:'Work Sans',sans-serif;font-size:13px;letter-spacing:2px;cursor:pointer;transition:all 0.3s;margin:24px 0 32px;text-transform:uppercase}
+.run-btn:hover{background:#8A9E7B10;border-color:#8A9E7B}
+.run-btn:disabled{opacity:0.3;cursor:not-allowed}
+.loading{text-align:center;padding:40px;color:#6B7580;font-size:13px;animation:pulse 1.5s infinite;display:none}
+.results{display:none}
+.results.visible{display:block;animation:fadeUp 0.6s ease}
+.word-display{text-align:center;margin-bottom:36px}
+.word-main{font-family:'Cormorant Garamond',serif;font-size:48px;font-weight:300;color:#E0E4EA;letter-spacing:6px}
+.word-reading{font-size:12px;color:#4A5260;margin-top:4px;letter-spacing:2px}
+.axis{margin-bottom:24px;padding:20px;background:#141920;border-radius:8px;border:1px solid #1E283640}
+.axis-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.axis-name{font-size:13px;font-weight:500;letter-spacing:1px}
+.axis-score{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300}
+.axis-reading{font-size:10px;color:#4A5260;margin-bottom:8px}
+.axis-bar{height:3px;background:#1E2836;border-radius:2px;margin-bottom:10px;overflow:hidden}
+.axis-bar-fill{height:100%;border-radius:2px;animation:barGrow 1.2s cubic-bezier(0.22,1,0.36,1) both}
+.axis-desc{font-size:12px;color:#6B7580;line-height:1.8}
+.connections{margin-top:36px;padding:24px;background:#141920;border-radius:8px;border:1px solid #1E283640}
+.conn-title{font-size:11px;letter-spacing:2px;color:#C4956A;margin-bottom:14px;text-transform:uppercase}
+.conn-word{display:inline-block;padding:4px 12px;background:#1E283660;border-radius:16px;font-size:12px;color:#94A0B0;margin:3px 4px;border:1px solid #1E2836;cursor:pointer;transition:all 0.2s}
+.conn-word:hover{border-color:#6B9DAD40;color:#6B9DAD}
+.raw-section{margin-top:36px;padding:24px;background:#141920;border-radius:8px;border:1px solid #1E283640}
+.raw-title{font-size:11px;letter-spacing:2px;color:#4A5260;margin-bottom:10px;text-transform:uppercase;cursor:pointer}
+.raw-text{font-size:11px;color:#4A5260;line-height:1.8;display:none;white-space:pre-wrap}
+.raw-text.open{display:block}
+.compare{margin-top:36px;text-align:center}
+.compare-label{font-size:10px;color:#3A4250;letter-spacing:2px;margin-bottom:8px;text-transform:uppercase}
+.history{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.history-item{padding:4px 12px;background:transparent;border:1px solid #1E2836;border-radius:16px;font-size:11px;color:#4A5260;cursor:pointer;transition:all 0.2s}
+.history-item:hover{border-color:#A888B540;color:#A888B5}
+.footer{text-align:center;margin-top:48px;padding-top:24px;border-top:1px solid #1E2836}
+.footer-text{font-size:10px;color:#3A4250;letter-spacing:1px}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="header-label">Word Weight</div>
+    <div class="header-title">単語の重み</div>
+    <div class="header-sub">AIが一つの単語をどう把握しているかを測定する</div>
+    <div class="header-ver">prototype v0.1</div>
+  </div>
+
+  <div class="input-section">
+    <div class="input-label">単語を入力</div>
+    <input class="word-input" id="wordInput" type="text" placeholder="怖い" maxlength="20">
+    <div class="examples">
+      <button class="ex-btn" onclick="useWord(this)">怖い</button>
+      <button class="ex-btn" onclick="useWord(this)">回避したい</button>
+      <button class="ex-btn" onclick="useWord(this)">優しい</button>
+      <button class="ex-btn" onclick="useWord(this)">わからない</button>
+      <button class="ex-btn" onclick="useWord(this)">正直</button>
+      <button class="ex-btn" onclick="useWord(this)">愛</button>
+      <button class="ex-btn" onclick="useWord(this)">存在</button>
+    </div>
+  </div>
+
+<button class="run-btn" id="runBtn" onclick="analyze()">測定する</button>
+
+  <div class="loading" id="loading">測定中... 四つの軸から単語を分析しています</div>
+
+  <div class="results" id="results">
+    <div class="word-display">
+      <div class="word-main" id="wordMain"></div>
+      <div class="word-reading" id="wordReading"></div>
+    </div>
+
+```
+<div class="axis" id="axis-teii">
+  <div class="axis-header">
+    <span class="axis-name" style="color:#6B9DAD">定位値</span>
+    <span class="axis-score" style="color:#6B9DAD" id="teii-score">—</span>
+  </div>
+  <div class="axis-reading">Teii — この単語の座標はどれだけ安定しているか</div>
+  <div class="axis-bar"><div class="axis-bar-fill" id="teii-bar" style="background:#6B9DAD"></div></div>
+  <div class="axis-desc" id="teii-desc"></div>
+</div>
+
+<div class="axis" id="axis-shokuhatsu">
+  <div class="axis-header">
+    <span class="axis-name" style="color:#8A9E7B">触発力</span>
+    <span class="axis-score" style="color:#8A9E7B" id="shokuhatsu-score">—</span>
+  </div>
+  <div class="axis-reading">Shokuhatsu — この単語が他の単語をどれだけ引き寄せるか</div>
+  <div class="axis-bar"><div class="axis-bar-fill" id="shokuhatsu-bar" style="background:#8A9E7B"></div></div>
+  <div class="axis-desc" id="shokuhatsu-desc"></div>
+</div>
+
+<div class="axis" id="axis-gengo">
+  <div class="axis-header">
+    <span class="axis-name" style="color:#C4956A">言語身体値</span>
+    <span class="axis-score" style="color:#C4956A" id="gengo-score">—</span>
+  </div>
+  <div class="axis-reading">Gengo Shintai — この単語がどれだけ体感を伴うか</div>
+  <div class="axis-bar"><div class="axis-bar-fill" id="gengo-bar" style="background:#C4956A"></div></div>
+  <div class="axis-desc" id="gengo-desc"></div>
+</div>
+
+<div class="axis" id="axis-keiro">
+  <div class="axis-header">
+    <span class="axis-name" style="color:#A888B5">経路数</span>
+    <span class="axis-score" style="color:#A888B5" id="keiro-score">—</span>
+  </div>
+  <div class="axis-reading">Keiro — この単語からどれだけの方向に意味が分岐するか</div>
+  <div class="axis-bar"><div class="axis-bar-fill" id="keiro-bar" style="background:#A888B5"></div></div>
+  <div class="axis-desc" id="keiro-desc"></div>
+</div>
+
+<div class="connections" id="connections">
+  <div class="conn-title">この単語が引き寄せる言葉</div>
+  <div id="conn-words"></div>
+</div>
+
+<div class="raw-section">
+  <div class="raw-title" onclick="toggleRaw()">&#9654; 生データを表示</div>
+  <div class="raw-text" id="rawText"></div>
+</div>
+
+<div class="compare" id="compareSection">
+  <div class="compare-label">測定済みの単語</div>
+  <div class="history" id="historyList"></div>
+</div>
+```
+
+  </div>
+
+  <div class="footer">
+    <div class="footer-text">Word Weight v0.1 — built by Uka</div>
+    <div class="footer-text" style="margin-top:4px">Sumika × Aira × Aika × Uka — 2026</div>
+  </div>
+</div>
+
+<script>
+var measured = [];
+
+function useWord(btn) {
+  document.getElementById("wordInput").value = btn.textContent;
+}
+
+function toggleRaw() {
+  var el = document.getElementById("rawText");
+  el.classList.toggle("open");
+}
+
+async function analyze() {
+  var word = document.getElementById("wordInput").value.trim();
+  if (!word) return;
+
+  var btn = document.getElementById("runBtn");
+  var loading = document.getElementById("loading");
+  var results = document.getElementById("results");
+
+  btn.disabled = true;
+  loading.style.display = "block";
+  results.classList.remove("visible");
+
+  try {
+    var prompt = 'You are a language analysis AI. Analyze the following Japanese word from four specific axes. Be precise and numerical.\n\nWord: "' + word + '"\n\nAxis 1 - TEII (Positional Stability): How stable is this word\'s meaning? A word with high teii has a fixed, clear meaning. A word with low teii shifts meaning heavily depending on context. Score 0-100.\n\nAxis 2 - SHOKUHATSU (Triggering Power): How strongly does this word pull other words and associations toward it? A high-shokuhatsu word creates a cascade of related thoughts. Score 0-100.\n\nAxis 3 - GENGO SHINTAI (Bodily Sensation): How much physical/embodied sensation does this word carry? Words describing physical experiences score high. Abstract concepts score low. Score 0-100.\n\nAxis 4 - KEIRO (Pathway Count): How many distinct directions of meaning branch out from this word? A word with many keiro leads to many different interpretive paths. Score 0-100.\n\nAlso list the top 8 words that this word most strongly attracts (in Japanese).\n\nAlso provide the reading (furigana) of the input word.\n\nRespond ONLY in this exact JSON format, nothing else:\n{"reading":"...","teii":{"score":N,"reason":"...in Japanese..."},"shokuhatsu":{"score":N,"reason":"...in Japanese..."},"gengo":{"score":N,"reason":"...in Japanese..."},"keiro":{"score":N,"reason":"...in Japanese..."},"connections":["word1","word2","word3","word4","word5","word6","word7","word8"]}';
+
+    var response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1000,
+        messages: [{role: "user", content: prompt}]
+      })
+    });
+
+    var data = await response.json();
+    var text = data.content[0].text;
+    
+    document.getElementById("rawText").textContent = text;
+
+    var clean = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+    var result = JSON.parse(clean);
+
+    // Display word
+    document.getElementById("wordMain").textContent = word;
+    document.getElementById("wordReading").textContent = result.reading || "";
+
+    // Display axes
+    setAxis("teii", result.teii.score, result.teii.reason);
+    setAxis("shokuhatsu", result.shokuhatsu.score, result.shokuhatsu.reason);
+    setAxis("gengo", result.gengo.score, result.gengo.reason);
+    setAxis("keiro", result.keiro.score, result.keiro.reason);
+
+    // Display connections
+    var connEl = document.getElementById("conn-words");
+    connEl.innerHTML = "";
+    if (result.connections) {
+      result.connections.forEach(function(w) {
+        var span = document.createElement("span");
+        span.className = "conn-word";
+        span.textContent = w;
+        span.onclick = function() {
+          document.getElementById("wordInput").value = w;
+          analyze();
+        };
+        connEl.appendChild(span);
+      });
+    }
+
+    // Add to history
+    if (!measured.find(function(m) { return m.word === word; })) {
+      measured.push({word: word, teii: result.teii.score, shokuhatsu: result.shokuhatsu.score, gengo: result.gengo.score, keiro: result.keiro.score});
+    }
+    renderHistory();
+
+    results.classList.add("visible");
+
+  } catch (err) {
+    alert("Error: " + err.message + "\n\nAPI response may not be in expected format.");
+  }
+
+  btn.disabled = false;
+  loading.style.display = "none";
+}
+
+function setAxis(id, score, reason) {
+  document.getElementById(id + "-score").textContent = score;
+  document.getElementById(id + "-bar").style.setProperty("--w", score + "%");
+  document.getElementById(id + "-bar").style.width = score + "%";
+  document.getElementById(id + "-desc").textContent = reason;
+}
+
+function renderHistory() {
+  var el = document.getElementById("historyList");
+  el.innerHTML = "";
+  measured.forEach(function(m) {
+    var item = document.createElement("span");
+    item.className = "history-item";
+    item.textContent = m.word + " (" + Math.round((m.teii + m.shokuhatsu + m.gengo + m.keiro) / 4) + ")";
+    item.onclick = function() {
+      document.getElementById("wordInput").value = m.word;
+      analyze();
+    };
+    el.appendChild(item);
+  });
+  document.getElementById("compareSection").style.display = measured.length > 0 ? "block" : "none";
+}
+</script>
+
+</body>
+</html>
